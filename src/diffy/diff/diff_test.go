@@ -1,6 +1,8 @@
 package diff
 
 import (
+	"fmt"
+	"strings"
 	"testing"
 )
 
@@ -24,8 +26,16 @@ type tTestCaseSpec struct {
 
 // -------------------------------------------
 
+type tTester struct {
+	*testing.T
+	name string
+	testeeFn func (s, t string) int
+}
+
+// -------------------------------------------
+
 type tTestCase interface {
-	execute(tester *testing.T)
+	execute(tester *tTester)
 }
 
 // -------------------------------------------
@@ -38,16 +48,16 @@ type tLDTestCase struct {
 // Assert that tTestCase is implemented by tLDTestCase. 
 var _ tTestCase = (*tLDTestCase)(nil)
 
-func (self *tLDTestCase) execute(tester *testing.T) {
+func (self *tLDTestCase) execute(tester *tTester) {
 
 	executeTest := func (s, t string, distance int, note string) {
-		computedDistance := LevenshteinDistance_v2(s, t)
+		computedDistance := tester.testeeFn(s, t)
 	 	if computedDistance != distance {
 	 		noteText := ""
 	 		if note != "" {
 	 			noteText = " (" + note + ")"
 	 		}
-	 		tester.Errorf("%-9q %-9q got: %3d expected: %3d%s", s, t, computedDistance, distance, noteText)
+	 		tester.Errorf("%s: %-9q %-9q got: %3d expected: %3d%s", tester.name, s, t, computedDistance, distance, noteText)
 	 	}
 	}
 
@@ -66,7 +76,7 @@ type tMasterTestCase struct {
 // Assert that tTestCase is implemented by tMasterTestCase.
 var _ tTestCase = (*tMasterTestCase)(nil)
 
-func (self *tMasterTestCase) execute(tester *testing.T) {
+func (self *tMasterTestCase) execute(tester *tTester) {
 	for _, testCase := range self.testCases {
 		testCase.execute(tester)
 	}
@@ -193,23 +203,36 @@ func (self *tMasterTestCase) appendSimpleTestCases(testCases []tTestCase) {
 // -------------------------------------------
 
 func TestDiff(t *testing.T) {
-
 	charSet := []rune(CHAR_SET)
 
-	t.Log("-------------------------------------")
-	t.Log("----- generating initial strings ----")
-	t.Log("-------------------------------------")
+	showBanner(t, "generating initial strings")
 	initialStrings := generateInitialStrings(t, charSet, 0, MAX_INITIAL_STRING_LEN)
 
-	t.Log("--------------------------------")
-	t.Log("----- generating test cases ----")
-	t.Log("--------------------------------")
+	showBanner(t, "generating test cases")
 	testCase := generateMasterTestCases(initialStrings, charSet, MAX_OP_COUNT)
 
-	t.Log("-------------------------------")
-	t.Log("----- executing test cases ----")
-	t.Log("-------------------------------")
-	testCase.execute(t)
+	runTests(t, testCase, "LevenshteinDistance_v2", LevenshteinDistance_v2)
+	runTests(t, testCase, "LevenshteinDistance_v3", LevenshteinDistance_v3)
+	runTests(t, testCase, "LevenshteinDistance_v4", LevenshteinDistance_v4)
+}
+
+// ------------------------------------------- runTests
+
+func runTests(t *testing.T, testCase tTestCase, name string, testeeFn func (s, t string) int) {
+	showBanner(t, name)
+	testCase.execute(&tTester{t, name, testeeFn})
+}
+
+// ------------------------------------------- showBanner
+
+func showBanner(t *testing.T, title string) {
+	bannerTitle := fmt.Sprintf("----- %s -------", title)
+	bannerBar := strings.Repeat("-", len(bannerTitle))
+	t.Log("")
+	t.Log(bannerBar)
+	t.Log(bannerTitle)
+	t.Log(bannerBar)
+	t.Log("")
 }
 
 // ------------------------------------------- generateInitialStrings

@@ -272,13 +272,19 @@ func min_int_3(a, b, c int) int {
 func LevenshteinDistance_v2(s, t string) int {
 
 	m, n := len(s), len(t)
+
+	// Go doesn't have natural two-dimensional arrays.  One option
+	// is to pack the two-dimensional array into a one-D array.
+	// The "offset" function abstracts out the offset calculation
+	// so we can pretend that we really have a two-D array.
 	matrix := make([]int, (m + 1) * (n + 1))	// number of rows * number of columns
+	offset := func (i, j int) int { return i * (n + 1) + j }
 
 	for j := 0; j < n + 1; j++ {
-		matrix[0 * (n + 1) + j] = j
+		matrix[offset(0, j)] = j
 	}
 	for i := 1; i < m + 1; i++ {
-		matrix[i * (n + 1) + 0] = i
+		matrix[offset(i, 0)] = i
 	}
 
 	for i := 0; i < m; i++ {
@@ -289,17 +295,106 @@ func LevenshteinDistance_v2(s, t string) int {
 			} else {
 				cost = 1
 			}
-			matrix[(i + 1) * (n + 1) + (j + 1)] = min_int_3(
-				matrix[i * (n + 1) + j] + cost,
-				matrix[i * (n + 1) + (j + 1)] + 1,
-				matrix[(i + 1) * (n + 1) + j] + 1,
+			matrix[offset(i + 1, j + 1)] = min_int_3(
+				matrix[offset(i, j)] + cost,
+				matrix[offset(i, j + 1)] + 1,
+				matrix[offset(i + 1, j)] + 1,
 			)
 		}
 	}
 
-	return matrix[m * (n + 1) + n]
+	return matrix[offset(m, n)]
 }
 
+// -------------------------------------------
+// ------------------------------------------- LevenshteinDistance_v3
+// -------------------------------------------
 
+// Just one change: Initialze the cells in the first column just before
+// we need them.  This will make sense when you see the next version.
 
+func LevenshteinDistance_v3(s, t string) int {
+
+	m, n := len(s), len(t)
+
+	// Go doesn't have natural two-dimensional arrays.  One option
+	// is to pack the two-dimensional array into a one-D array.
+	// The "offset" function abstracts out the offset calculation
+	// so we can pretend that we really have a two-D array.
+	matrix := make([]int, (m + 1) * (n + 1))	// number of rows * number of columns
+	offset := func (i, j int) int { return i * (n + 1) + j }
+
+	// Initialize the first row now.  However, we will wait and initialize
+	// cells in the first column row-by-row, just before we need them.
+	for j := 0; j < n + 1; j++ {
+		matrix[offset(0, j)] = j
+	}
+
+	for i := 0; i < m; i++ {
+		matrix[offset(i + 1, 0)] = i + 1 // yo
+		for j := 0; j < n; j++ {
+			var cost int
+			if s[i] == t[j] {
+				cost = 0
+			} else {
+				cost = 1
+			}
+			matrix[offset(i + 1, j + 1)] = min_int_3(
+				matrix[offset(i, j)] + cost,
+				matrix[offset(i, j + 1)] + 1,
+				matrix[offset(i + 1, j)] + 1,
+			)
+		}
+	}
+
+	return matrix[offset(m, n)]
+}
+
+// -------------------------------------------
+// ------------------------------------------- LevenshteinDistance_v4
+// -------------------------------------------
+
+// One more change, we only ever need to keep the last two rows in memory!
+
+func LevenshteinDistance_v4(s, t string) int {
+
+	m, n := len(s), len(t)
+
+	// Strictly speaking, we don't need to save the entire matrix
+	// of intermediate results, we only need the row right before
+	// the one we are currently computing.
+	rowCount := 2
+
+	// Go doesn't have natural two-dimensional arrays.  One option
+	// is to pack the two-dimensional array into a one-D array.
+	// The "offset" function abstracts out the offset calculation
+	// so we can pretend that we really have a two-D array.
+	matrix := make([]int, rowCount * (n + 1))	// number of rows * number of columns
+	offset := func (i, j int) int { return (i % rowCount) * (n + 1) + j }
+
+	// Initialize the first row now.  However, we will wait and initialize
+	// cells in the first column row-by-row, just before we need them.
+	for j := 0; j < n + 1; j++ {
+		matrix[offset(0, j)] = j
+	}
+
+	for i := 0; i < m; i++ {
+		matrix[offset(i + 1, 0)] = i + 1 // yo
+		for j := 0; j < n; j++ {
+			var cost int
+			if s[i] == t[j] {
+				cost = 0
+			} else {
+				cost = 1
+			}
+			matrix[offset(i + 1, j + 1)] = min_int_3(
+				matrix[offset(i, j)] + cost,
+				matrix[offset(i, j + 1)] + 1,
+				matrix[offset(i + 1, j)] + 1,
+			)
+		}
+	}
+
+	return matrix[offset(m, n)]
+}
 
