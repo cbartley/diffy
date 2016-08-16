@@ -211,9 +211,19 @@ func TestDiff(t *testing.T) {
 	showBanner(t, "generating test cases")
 	testCase := generateMasterTestCases(initialStrings, charSet, MAX_OP_COUNT)
 
+	runTests(t, testCase, "LevenshteinDistance_v1", LevenshteinDistance_v1)
 	runTests(t, testCase, "LevenshteinDistance_v2", LevenshteinDistance_v2)
 	runTests(t, testCase, "LevenshteinDistance_v3", LevenshteinDistance_v3)
 	runTests(t, testCase, "LevenshteinDistance_v4", LevenshteinDistance_v4)
+	runTests(t, testCase, "LevenshteinDistance_v5", LevenshteinDistance_v5)
+
+	// Single ad hoc test for now...
+	// singleTestCase := &tLDTestCase{
+	// 	"Now is the time for men to come to the aid of their country",  
+	// 	"Now is the time for all good men to come to the aid of their country",
+	// 	9,
+	// }
+	// runTests(t, singleTestCase, "LevenshteinDistance_v5", LevenshteinDistance_v5)
 }
 
 // ------------------------------------------- runTests

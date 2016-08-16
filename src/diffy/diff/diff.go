@@ -1,5 +1,9 @@
 package diff
 
+import "fmt"
+
+var _ = fmt.Printf
+
 /*
 	Levenshtein Distance
 	====================
@@ -396,5 +400,115 @@ func LevenshteinDistance_v4(s, t string) int {
 	}
 
 	return matrix[offset(m, n)]
+}
+
+// -------------------------------------------
+// ------------------------------------------- LevenshteinDistance_v5
+// -------------------------------------------
+
+func LevenshteinDistance_v5(s, t string) int {
+	distance, alignment := Diff_v1(s, t)
+
+	// --- display the alignment ---
+	alignment.dump(s, t, distance)
+
+	return distance
+}
+
+// -------------------------------------------
+// -------------------------------------------
+// -------------------------------------------
+
+func Diff_v1(s, t string) (distance int, alignment tAlignment) {
+
+	// --- compute the edit distance matrix
+
+	m, n := len(s), len(t)
+
+	// Go doesn't have natural two-dimensional arrays.  One option
+	// is to pack the two-dimensional array into a one-D array.
+	// The "offset" function abstracts out the offset calculation
+	// so we can pretend that we really have a two-D array.
+	matrix := make([]int, (m + 1) * (n + 1))	// number of rows * number of columns
+	offset := func (i, j int) int { return i * (n + 1) + j }
+
+	for j := 0; j < n + 1; j++ {
+		matrix[offset(0, j)] = j
+	}
+	for i := 1; i < m + 1; i++ {
+		matrix[offset(i, 0)] = i
+	}
+
+	for i := 0; i < m; i++ {
+		for j := 0; j < n; j++ {
+			var cost int
+			if s[i] == t[j] {
+				cost = 0
+			} else {
+				cost = 1
+			}
+			matrix[offset(i + 1, j + 1)] = min_int_3(
+				matrix[offset(i, j)] + cost,
+				matrix[offset(i, j + 1)] + 1,
+				matrix[offset(i + 1, j)] + 1,
+			)
+		}
+	}
+
+	// --- extract an alignment from the computed matrix ---
+
+	for i, j := m, n; i > 0 || j > 0; {
+
+		var iNext, jNext int
+
+		var link tLink
+
+		// We'll use "sIndex" and "tIndex" when referring to the "s" and "t" sequences,
+		// and "i" and "j" when referring to coordinates into the computation matrix.
+		// This makes the code a little easier to read.
+		sIndex := i - 1
+		tIndex := j - 1
+
+		if i < 1 {
+			link, iNext, jNext = tLink{RightOnly, -1, tIndex}, 0, j - 1
+		} else if j < 1 {
+			link, iNext, jNext = tLink{LeftOnly, sIndex, -1}, i - 1, 0
+		} else {
+
+			var cost int
+			if s[i - 1] == t[j - 1] { cost = 0 } else { cost = 1 }
+
+			a := matrix[offset(i - 1, j - 1)] - cost
+			b := matrix[offset(i - 1, j)]
+			c := matrix[offset(i, j - 1)]
+
+			// Another readability improvement: Use boolean temporaries rather than inlining the expressions.  
+			aIsOK := a <= b && a <= c
+			bIsOK := b <= a && b <= c
+			cIsOK := c <= a && c <= b
+
+			if aIsOK && cost == 0 {
+				link, iNext, jNext = tLink{Matching, sIndex, tIndex}, i - 1, j - 1
+			} else if bIsOK {
+				link, iNext, jNext = tLink{LeftOnly, sIndex, -1}, i - 1, j
+			} else if cIsOK {
+				link, iNext, jNext = tLink{RightOnly, -1, tIndex}, i, j - 1
+			} else {	// aIsOK && cost != 0
+				link, iNext, jNext = tLink{Different, sIndex, tIndex}, i - 1, j - 1
+			}
+		}
+
+		alignment.links = append(alignment.links, link)
+
+		i, j = iNext, jNext
+	}
+
+	// The links are supposed to be in ascending order, but we've extracted them
+	// in descending order, so now we need to reverse them.
+	for low, high := 0, len(alignment.links) - 1; low < high; low, high = low + 1, high - 1 {
+		alignment.links[low], alignment.links[high] = alignment.links[high], alignment.links[low]
+	}
+
+	return matrix[offset(m, n)], alignment
 }
 
