@@ -1,7 +1,5 @@
 package diff
 
-import "fmt"
-
 // -------------------------------------------
 // -------------------------------------------
 // -------------------------------------------
@@ -47,52 +45,53 @@ type tLink struct {
 	rightIndex int 		// -1 or zero-based index into the right or second sequence
 }
 
-// ------------------------------------------- tAlignment dump
+// -------------------------------------------
 
-func (alignment *tAlignment) dump(left, right string, computedEditDistance int) {
+func (alignment *tAlignment) dump(left, right ComparableSequence, computedEditDistance int, s SimpleLogger) {
 
-	fmt.Printf(".................................................... ")
-	fmt.Printf("%s/%s (edit distance: %d)\n", left, right, computedEditDistance)
-	fmt.Println()
+	s.Printf(".................................................... ")
+	s.Printf("%s/%s (edit distance: %d)\n", left.GetDescription(), right.GetDescription(), computedEditDistance)
+	s.Println()
 
-	fmt.Printf("edit sequence\n")
-	fmt.Printf("=============\n")
+	s.Printf("edit sequence\n")
+	s.Printf("=============\n")
 
-	fmt.Println()
+	s.Println()
 	matchingCount := 0
 	for _, link := range alignment.links {
 		codeChar := " "
-		leftItem, rightItem := ".", "."
+		var leftItem, rightItem Comparable = NewTextLine("-"), NewTextLine("-")
 		switch link.linkType {
 		case Matching:
 			codeChar = " "
-			leftItem, rightItem = string(left[link.leftIndex]), string(right[link.rightIndex])
+			leftItem, rightItem = left.GetItemAt(link.leftIndex), right.GetItemAt(link.rightIndex)
 			matchingCount++
 		case Different:
 			codeChar = "*"
-			leftItem, rightItem = string(left[link.leftIndex]), string(right[link.rightIndex])
+			leftItem, rightItem = left.GetItemAt(link.leftIndex), right.GetItemAt(link.rightIndex)
 		case LeftOnly:
 			codeChar = "-"
-			leftItem = string(left[link.leftIndex])
+			leftItem = left.GetItemAt(link.leftIndex)
 		case RightOnly:
 			codeChar = "+"
-			rightItem = string(right[link.rightIndex])
+			rightItem = right.GetItemAt(link.rightIndex)
 		default:
 			panic("Missing case")
 		}
-		fmt.Printf("%s %2d %s %s %2d\n", codeChar, link.leftIndex, leftItem, rightItem, link.rightIndex)
+		s.Printf("%s %2d %-30s %-30s %2d\n", codeChar, link.leftIndex, leftItem.Stringify(30), rightItem.Stringify(30), link.rightIndex)
 	}
-	fmt.Println()
+	s.Println()
 
-	fmt.Printf("first column legend\n")
-	fmt.Printf("-------------------\n")
-	fmt.Printf("%q copy\n", " ")
-	fmt.Printf("%q change\n", "*")
-	fmt.Printf("%q insert\n", "+")
-	fmt.Printf("%q delete\n", "-")
+	s.Printf("first column legend\n")
+	s.Printf("-------------------\n")
+	s.Printf("%q copy\n", " ")
+	s.Printf("%q change\n", "*")
+	s.Printf("%q insert\n", "+")
+	s.Printf("%q delete\n", "-")
 
-	fmt.Println()
+	s.Println()
 	nonMatchingCount := len(alignment.links) - matchingCount
-	fmt.Printf("non-matching count, computed edit distance = %d, %d\n", nonMatchingCount, computedEditDistance)
-	fmt.Println()
+	s.Printf("non-matching count, computed edit distance = %d, %d\n", nonMatchingCount, computedEditDistance)
+	s.Println()
 }
+

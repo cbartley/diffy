@@ -1,8 +1,7 @@
 package diff
 
 import (
-	"fmt"
-	"strings"
+	"math"
 	"testing"
 )
 
@@ -13,81 +12,257 @@ const MAX_INITIAL_STRING_LEN = 3
 const MAX_OP_COUNT = 4
 
 // -------------------------------------------
-// ------------------------------------------- test case types
+// ------------------------------------------- TestDiffHash
 // -------------------------------------------
 
-// -------------------------------------------
+func TestDiffHash(tt *testing.T) {
 
-type tTestCaseSpec struct {
-	initialString string
-	charSet []rune
-	maxOpCount int
-}
+	tester := NewTester(tt, "Testing DiffHash", nil)
+	tester.PrintBanner("Testing DiffHash")
 
-// -------------------------------------------
+	// The hashing algorithm that we're using is basically designed around a fixed
+	// size window (four runes, currently).  Of course it has to support strings
+	// shorter than this window size as well, and this is obviously going to
+	// require some sort of special handling for these cases.  So we want to test
+	// a full set of strings shorter than the window size and, in fact, all the
+	// way down to the empty string.
 
-type tTester struct {
-	*testing.T
-	name string
-	testeeFn func (s, t string) int
-}
+	// WARNING: A hash algorithm, by it's very nature, may occasionally compute the 
+	// same hash for different strings.  Our test strings here should be chosen so
+	// that this does not occur.  If the hash algorithm is any good, this should be
+	// easy.
 
-// -------------------------------------------
-
-type tTestCase interface {
-	execute(tester *tTester)
-}
-
-// -------------------------------------------
-
-type tLDTestCase struct {
-	s, t string
-	distance int
-}
-
-// Assert that tTestCase is implemented by tLDTestCase. 
-var _ tTestCase = (*tLDTestCase)(nil)
-
-func (self *tLDTestCase) execute(tester *tTester) {
-
-	executeTest := func (s, t string, distance int, note string) {
-		computedDistance := tester.testeeFn(s, t)
-	 	if computedDistance != distance {
-	 		noteText := ""
-	 		if note != "" {
-	 			noteText = " (" + note + ")"
-	 		}
-	 		tester.Errorf("%s: %-9q %-9q got: %3d expected: %3d%s", tester.name, s, t, computedDistance, distance, noteText)
-	 	}
+	testStrings := []string{
+		"",
+		"1",
+		"12",
+		"123",
+		"1234",
+		"12345",
+		"123456",
+		"1234567",
+		"12345678",
 	}
 
-	s, t, distance := string(self.s), string(self.t), self.distance
-	executeTest(s, t, distance, "forward")
-	executeTest(t, s, distance, "backward")
+	// Compare all possible pairs of test strings.  This includes comparing each string to itself as well.
+	for _, s := range testStrings {
+		for _, t := range testStrings {
+
+			var diffHashS, diffHashT DiffHash
+			diffHashS.Init(s)
+			diffHashT.Init(t)
+			similarityFactor := diffHashS.Similarity(diffHashT)
+
+			// Check for NaN similarity factor.
+			if math.IsNaN(float64(similarityFactor)) {
+				tt.Errorf("DiffHash: %q and %q should have a similarity factor that is a number, not %f!", s, t, similarityFactor)
+			}
+
+			// Check for a similarity factor that's completely out of range.
+			if similarityFactor < 0.0 {
+				tt.Errorf("DiffHash: %q and %q should have a similarity factor >= 0.0, but instead have %f", s, t, similarityFactor)
+			} else if similarityFactor > 1.0 {
+				tt.Errorf("DiffHash: %q and %q should have a similarity factor <= 1.0, but instead have %f", s, t, similarityFactor)
+			}
+
+			// Check for 100% similarity or not 100% similarity.
+			if s == t {
+				if similarityFactor != 1.0 {
+					tt.Errorf("DiffHash: %q and %q should have a 1.0 similarity factor (they are the same), " +
+								"however a '%f' similarity factor was reported.", s, t, similarityFactor)
+				}
+			} else {
+				if similarityFactor == 1.0 {
+					tt.Errorf("DiffHash: %q and %q are different but a '%f' similarity factor was reported.", s, t, similarityFactor)
+				}
+			}
+		}
+	}
 }
 
 // -------------------------------------------
+// ------------------------------------------- TestTextLine
+// -------------------------------------------
 
-type tMasterTestCase struct {
-	title string
-	testCases []tTestCase
+func TestTextLine(tt *testing.T) {
+
+	tester := NewTester(tt, "TextLine", nil)
+
+	tester.PrintBanner("Testing TextLine")
+
+	testStrings := []string{
+		"",
+		"1",
+		"12",
+		"123",
+		"1234",
+		"12345",
+		"123456",
+		"1234567",
+		"12345678",
+	}
+
+	// Compare all possible pairs of test strings.  This includes comparing each string to itself as well.
+	for _, s := range testStrings {
+		for _, t := range testStrings {
+			lineS := NewTextLine(s)
+			lineT := NewTextLine(t)
+
+			similarityFactor := lineS.Similarity(lineT)
+
+			// Check for NaN similarity factor.
+			if math.IsNaN(float64(similarityFactor)) {
+				tt.Errorf("TextLine: %q and %q should have a similarity factor that is a number, not %f!", s, t, similarityFactor)
+			}
+
+			// Check for a similarity factor that's completely out of range.
+			if similarityFactor < 0.0 {
+				tt.Errorf("TextLine: %q and %q should have a similarity factor >= 0.0, but instead have %f", s, t, similarityFactor)
+			} else if similarityFactor > 1.0 {
+				tt.Errorf("TextLine: %q and %q should have a similarity factor <= 1.0, but instead have %f", s, t, similarityFactor)
+			}
+
+			// Check for 100% similarity or not 100% similarity.
+			if s == t {
+				if similarityFactor != 1.0 {
+					tt.Errorf("TextLine: %q and %q should have a 1.0 similarity factor (they are the same), " +
+								"however a '%f' similarity factor was reported.", s, t, similarityFactor)
+				}
+			} else {
+				if similarityFactor == 1.0 {
+					tt.Errorf("TextLine: %q and %q are different but a '%f' similarity factor was reported.", s, t, similarityFactor)
+				}
+			}
+		}
+	}
 }
 
-// Assert that tTestCase is implemented by tMasterTestCase.
-var _ tTestCase = (*tMasterTestCase)(nil)
+// -------------------------------------------
+// ------------------------------------------- TestLevenshteinDistance
+// -------------------------------------------
 
-func (self *tMasterTestCase) execute(tester *tTester) {
-	for _, testCase := range self.testCases {
+func TestLevenshteinDistance(t *testing.T) {
+
+	tester := NewTester(t, "TestLevenshteinDistance", nil)
+
+	charSet := []rune(CHAR_SET)
+
+	tester.PrintBanner("generating initial strings")
+	initialStrings := generateInitialStrings(t, charSet, 0, MAX_INITIAL_STRING_LEN)
+
+	tester.PrintBanner("generating test cases")
+	testCase := generateMasterTestCases(initialStrings, charSet, MAX_OP_COUNT)
+
+	// runTests(NewTester(t, "LevenshteinDistance_v1", LevenshteinDistance_v1), testCase)
+	// runTests(NewTester(t, "LevenshteinDistance_v2", LevenshteinDistance_v2), testCase)
+	// runTests(NewTester(t, "LevenshteinDistance_v3", LevenshteinDistance_v3), testCase)
+	// runTests(NewTester(t, "LevenshteinDistance_v4", LevenshteinDistance_v4), testCase)
+	// runTests(NewTester(t, "LevenshteinDistance_v5", LevenshteinDistance_v5), testCase)
+	runTests(NewTester(t, "LevenshteinDistance_v6", LevenshteinDistance_v6), testCase)
+
+	// Single ad hoc test for now...
+	// singleTestCase := &tLDTestCase{
+	// 	"Now is the time for men to come to the aid of their country",  
+	// 	"Now is the time for all good men to come to the aid of their country",
+	// 	9,
+	// }
+	// runTests(t, singleTestCase, "LevenshteinDistance_v5", LevenshteinDistance_v5)
+}
+
+// -------------------------------------------
+// ------------------------------------------- TestDiff
+// -------------------------------------------
+
+var pairsOfSimilarStrings [][]string = [][]string{
+	[]string{"He’s Alive!", "It’s Alive!"},
+	[]string{"Mirror, mirror on the wall, who is the fairest of them all?", "Magic Mirror on the Wall, who is the Fairest one of all?"},
+	[]string{"Toto, I don't think we're in Kansas anymore.", "Toto, I've a feeling we're not in Kansas anymore."},
+	[]string{"Beam me up Scotty.", "Beam us up Scotty."},
+	[]string{"Mrs. Robinson, are you trying to seduce me?", "Mrs. Robinson, you're trying to seduce me. Aren't you?"},
+	[]string{"May the Force Be With You", "Remember, the Force will be with you ... always"},
+	[]string{"Luke, I am your father.", "No, I am your father."},
+	[]string{"If you build it, they will come", "If you build it, he will come"},
+	[]string{"Hello, Clarice", "Good evening, Clarice"},
+	[]string{"Ah, Houston, we've had a problem.", "Houston, we have a problem"},
+}
+
+func TestDiff(t *testing.T) {
+
+	tester := NewTester(t, "TestDiff", nil)
+
+	var lines1 ComparableLines
+	var lines2 ComparableLines
+	for _, stringPair := range pairsOfSimilarStrings {
+		lines1 = append(lines1, NewTextLine(stringPair[0]))
+		lines2 = append(lines2, NewTextLine(stringPair[1]))
+	}
+
+	tester.PrintBanner("Diff_v2")
+	distance, alignment := Diff_v2(lines1, lines2)
+	alignment.dump(lines1, lines2, int(distance), tester)
+}
+
+// -------------------------------------------
+// ------------------------------------------- TestDiff2
+// -------------------------------------------
+
+func TestDiff2(t *testing.T) {
+
+	tester := NewTester(t, "Diff_v2", nil)
+
+	tester.PrintBanner("Diff_v2")
+
+	// If we generate all the numbers between 0 (inclusive) and 2^n (exclusive), then
+	// we also generate all the possible bit patterns for n bits.  This can be an easy
+	// way to generate an exhaustive (for some definition) list of test cases of a
+	// given length.  In this case we construct each test case from a sequence of m
+	// 2-bit control codes (n = 2 * m in this case).  We use the i'th 2-bit sequence
+	// (bits 2 * i and 2 * i + 1) to determine what to do with the pair of strings at
+	// position i in the source test data.
+
+	tester.PrintHeader("Constructing Test Cases")
+
+	var codeCount uint32 = 5					// we will build test cases from the first m string pairs
+	codeBitCount := 2 * codeCount				// we need 2 bits for each string pair
+	codeBitStringCount := 1 << codeBitCount		// we will generate the range [0..2 ^ (2 * codeCount)]
+
+	// Construct test cases.
+	var testCases []TestCase
+	for controlCodeBitString := 0; controlCodeBitString < codeBitStringCount; controlCodeBitString++ {
+		var leftLines, rightLines ComparableLines
+		remainingControlCodeBitString := controlCodeBitString
+		for i := uint32(0); i < codeCount; i++ {
+			controlCode := remainingControlCodeBitString & 3					// read the two lowest order bits
+			remainingControlCodeBitString = remainingControlCodeBitString >> 2	// shift away the two lowest order bits
+			switch controlCode {
+			case 0:
+				leftLines = append(leftLines, NewTextLine(pairsOfSimilarStrings[i][0]))
+			case 1:
+				rightLines = append(rightLines, NewTextLine(pairsOfSimilarStrings[i][1]))
+			case 2:
+				leftLines = append(leftLines, NewTextLine(pairsOfSimilarStrings[i][0]))
+				rightLines = append(rightLines, NewTextLine(pairsOfSimilarStrings[i][0]))
+			case 3:
+				leftLines = append(leftLines, NewTextLine(pairsOfSimilarStrings[i][0]))
+				rightLines = append(rightLines, NewTextLine(pairsOfSimilarStrings[i][1]))
+			default:
+				panic("not reached")
+			}
+		}
+		testCases = append(testCases, NewDiffTestCase(leftLines, rightLines))
+	}
+
+	// Execute the test cases.
+	tester.PrintHeader("Testing", len(testCases), "test cases.")
+	for _, testCase := range testCases {
 		testCase.execute(tester)
 	}
-}
 
-func (self *tMasterTestCase) appendSimpleTestCases(testCases []tTestCase) {
-	self.testCases = append(self.testCases, testCases...)
+	tester.PrintSummary("Done.")
 }
 
 // -------------------------------------------
-// -------------------------------------------
+// ------------------------------------------- Levenshtein Distance functions
 // -------------------------------------------
 
 /*
@@ -173,9 +348,9 @@ func (self *tMasterTestCase) appendSimpleTestCases(testCases []tTestCase) {
 	 	"c" => "a"
 	 	"d" => "b"
 
-	 Then we should get the initial string "cdd" and all the same
+	 then we should get the initial string "cdd" and all the same
 	 edit sequences (and consequently, test cases) as if we just
-	 started with "cdd" and used the exhasutive test case algorithm
+	 started with "cdd" and used the exhaustive test case algorithm
 	 to generate test cases for it directly.  The test cases might
 	 be in a different order, but we don't care about the order.
 
@@ -198,51 +373,49 @@ func (self *tMasterTestCase) appendSimpleTestCases(testCases []tTestCase) {
 	 strings.
 */
 
-// -------------------------------------------
-// -------------------------------------------
-// -------------------------------------------
+// ------------------------------------------- type tTestCaseSpec
 
-func TestDiff(t *testing.T) {
-	charSet := []rune(CHAR_SET)
+type tTestCaseSpec struct {
+	initialString string
+	charSet []rune
+	maxOpCount int
+}
 
-	showBanner(t, "generating initial strings")
-	initialStrings := generateInitialStrings(t, charSet, 0, MAX_INITIAL_STRING_LEN)
+// ------------------------------------------- type tLDTestCase
 
-	showBanner(t, "generating test cases")
-	testCase := generateMasterTestCases(initialStrings, charSet, MAX_OP_COUNT)
+type tLDTestCase struct {
+	s, t string
+	distance int
+}
 
-	runTests(t, testCase, "LevenshteinDistance_v1", LevenshteinDistance_v1)
-	runTests(t, testCase, "LevenshteinDistance_v2", LevenshteinDistance_v2)
-	runTests(t, testCase, "LevenshteinDistance_v3", LevenshteinDistance_v3)
-	runTests(t, testCase, "LevenshteinDistance_v4", LevenshteinDistance_v4)
-	runTests(t, testCase, "LevenshteinDistance_v5", LevenshteinDistance_v5)
+// Assert that TestCase is implemented by tLDTestCase. 
+var _ TestCase = (*tLDTestCase)(nil)
 
-	// Single ad hoc test for now...
-	// singleTestCase := &tLDTestCase{
-	// 	"Now is the time for men to come to the aid of their country",  
-	// 	"Now is the time for all good men to come to the aid of their country",
-	// 	9,
-	// }
-	// runTests(t, singleTestCase, "LevenshteinDistance_v5", LevenshteinDistance_v5)
+// ------------------------------------------- tLDTestCase execute
+
+func (self *tLDTestCase) execute(tester *tTester) {
+
+	executeTest := func (s, t string, distance int, note string) {
+		computedDistance := tester.testeeFn(s, t)
+	 	if computedDistance != distance {
+	 		noteText := ""
+	 		if note != "" {
+	 			noteText = " (" + note + ")"
+	 		}
+	 		tester.Errorf("%s: %-9q %-9q got: %3d expected: %3d%s", tester.name, s, t, computedDistance, distance, noteText)
+	 	}
+	}
+
+	s, t, distance := string(self.s), string(self.t), self.distance
+	executeTest(s, t, distance, "forward")
+	executeTest(t, s, distance, "backward")
 }
 
 // ------------------------------------------- runTests
 
-func runTests(t *testing.T, testCase tTestCase, name string, testeeFn func (s, t string) int) {
-	showBanner(t, name)
-	testCase.execute(&tTester{t, name, testeeFn})
-}
-
-// ------------------------------------------- showBanner
-
-func showBanner(t *testing.T, title string) {
-	bannerTitle := fmt.Sprintf("----- %s -------", title)
-	bannerBar := strings.Repeat("-", len(bannerTitle))
-	t.Log("")
-	t.Log(bannerBar)
-	t.Log(bannerTitle)
-	t.Log(bannerBar)
-	t.Log("")
+func runTests(tester *tTester, testCase TestCase) {
+	tester.PrintBanner(tester.name)
+	testCase.execute(tester)
 }
 
 // ------------------------------------------- generateInitialStrings
@@ -257,14 +430,14 @@ func generateInitialStrings(t *testing.T, charSet []rune, minCharCount, maxCharC
 
 // ------------------------------------------- generateMasterTestCases
 
-func generateMasterTestCases(initialStrings []string, charSet []rune, maxOpCount int) tTestCase {
-	var testCases []tTestCase
+func generateMasterTestCases(initialStrings []string, charSet []rune, maxOpCount int) TestCase {
+	var testCases []TestCase
 	for _, initialString := range initialStrings {
 		testCase := generateTestCases(initialString, charSet, maxOpCount)
 		testCases = append(testCases, testCase)
 	}
 
-	masterTestCase := tMasterTestCase{title: "All test cases"}
+	masterTestCase := MasterTestCase{title: "All test cases"}
 	masterTestCase.appendSimpleTestCases(testCases)
 
 	return &masterTestCase
@@ -272,7 +445,7 @@ func generateMasterTestCases(initialStrings []string, charSet []rune, maxOpCount
 
 // ------------------------------------------- generateTestCases
 
-func generateTestCases(initialString string, charSet []rune, maxOpCount int) tTestCase {
+func generateTestCases(initialString string, charSet []rune, maxOpCount int) TestCase {
 
 	var tStrings []string
 	tStringToDistanceMap := make(map[string]int)
@@ -301,14 +474,14 @@ func generateTestCases(initialString string, charSet []rune, maxOpCount int) tTe
 	spec := tTestCaseSpec{initialString, charSet, maxOpCount}
 	createTestCases(&spec, initialString, 0, testCaseRecorder)
 
-	testCases := make([]tTestCase, 0, len(tStrings))
+	testCases := make([]TestCase, 0, len(tStrings))
 	for _, t := range tStrings {
 		distance := tStringToDistanceMap[t]
 		testCase := tLDTestCase{s: initialString, t: t, distance: distance}
 		testCases = append(testCases, &testCase)
 	}
 
-	masterTestCase := tMasterTestCase{title: initialString}
+	masterTestCase := MasterTestCase{title: initialString}
 	masterTestCase.appendSimpleTestCases(testCases)
 
 	return &masterTestCase
@@ -442,4 +615,31 @@ func generateStringsIntoAccumulator(prefix string, charSet []rune, charCount int
 			generateStringsIntoAccumulator(newPrefix, charSet, charCount - 1, accumulator)
 		}
 	}
+}
+
+// -------------------------------------------
+// ------------------------------------------- Diff stuff
+// -------------------------------------------
+
+// ------------------------------------------- type DiffTestCase
+
+type DiffTestCase struct {
+	leftLines, rightLines ComparableSequence
+}
+
+// Assert that TestCase is implemented by DiffTestCase. 
+var _ TestCase = (*DiffTestCase)(nil)
+
+// ------------------------------------------- NewDiffTestCase DiffTestCase factory function
+
+func NewDiffTestCase(leftLines, rightLines ComparableSequence) *DiffTestCase {
+	return &DiffTestCase{leftLines: leftLines, rightLines: rightLines}
+}
+
+// ------------------------------------------- DiffTestCase execute
+
+func (self *DiffTestCase) execute(tester *tTester) {
+	distance, alignment := Diff_v2(self.leftLines, self.rightLines)
+	alignment.dump(self.leftLines, self.rightLines, int(distance), tester)
+	// TODO: Short of a panic, the test will never actually fail!
 }

@@ -410,7 +410,7 @@ func LevenshteinDistance_v5(s, t string) int {
 	distance, alignment := Diff_v1(s, t)
 
 	// --- display the alignment ---
-	alignment.dump(s, t, distance)
+	alignment.dump(ComparableString(s), ComparableString(t), distance, SimpleStdoutLogger)
 
 	return distance
 }
@@ -510,5 +510,123 @@ func Diff_v1(s, t string) (distance int, alignment tAlignment) {
 	}
 
 	return matrix[offset(m, n)], alignment
+}
+
+// -------------------------------------------
+// ------------------------------------------- LevenshteinDistance_v6
+// -------------------------------------------
+
+func LevenshteinDistance_v6(s, t string) int {
+	distance, alignment := Diff_v2(ComparableString(s), ComparableString(t))
+
+	// --- display the alignment ---
+	_ = alignment
+	// alignment.dump(s, t, distance)
+
+	return int(distance)
+}
+
+// -------------------------------------------
+// -------------------------------------------
+// -------------------------------------------
+
+func Diff_v2(s, t ComparableSequence) (distance float32, alignment tAlignment) {
+
+	// --- compute the edit distance matrix
+
+	m, n := s.Length(), t.Length()
+
+	// Go doesn't have natural two-dimensional arrays.  One option
+	// is to pack the two-dimensional array into a one-D array.
+	// The "offset" function abstracts out the offset calculation
+	// so we can pretend that we really have a two-D array.
+	matrix := make([]float32, (m + 1) * (n + 1))	// number of rows * number of columns
+	offset := func (i, j int) int { return i * (n + 1) + j }
+
+	for j := 0; j < n + 1; j++ {
+		matrix[offset(0, j)] = float32(j)
+	}
+	for i := 1; i < m + 1; i++ {
+		matrix[offset(i, 0)] = float32(i)
+	}
+
+	for i := 0; i < m; i++ {
+		for j := 0; j < n; j++ {
+			cost := s.GetItemAt(i).Compare(t.GetItemAt(j))
+			matrix[offset(i + 1, j + 1)] = min_float32_3(
+				matrix[offset(i, j)] + cost,
+				matrix[offset(i, j + 1)] + 1,
+				matrix[offset(i + 1, j)] + 1,
+			)
+		}
+	}
+
+	// --- extract an alignment from the computed matrix ---
+
+	for i, j := m, n; i > 0 || j > 0; {
+
+		var iNext, jNext int
+
+		var link tLink
+
+		// We'll use "sIndex" and "tIndex" when referring to the "s" and "t" sequences,
+		// and "i" and "j" when referring to coordinates into the computation matrix.
+		// This makes the code a little easier to read.
+		sIndex := i - 1
+		tIndex := j - 1
+
+		if i < 1 {
+			link, iNext, jNext = tLink{RightOnly, -1, tIndex}, 0, j - 1
+		} else if j < 1 {
+			link, iNext, jNext = tLink{LeftOnly, sIndex, -1}, i - 1, 0
+		} else {
+
+			cost := s.GetItemAt(i - 1).Compare(t.GetItemAt(j - 1))
+
+			a := matrix[offset(i - 1, j - 1)] - cost
+			b := matrix[offset(i - 1, j)]
+			c := matrix[offset(i, j - 1)]
+
+			// Another readability improvement: Use boolean temporaries rather than inlining the expressions.  
+			aIsOK := a <= b && a <= c
+			bIsOK := b <= a && b <= c
+			cIsOK := c <= a && c <= b
+
+			if aIsOK && cost == 0.0 {
+				link, iNext, jNext = tLink{Matching, sIndex, tIndex}, i - 1, j - 1
+			} else if bIsOK {
+				link, iNext, jNext = tLink{LeftOnly, sIndex, -1}, i - 1, j
+			} else if cIsOK {
+				link, iNext, jNext = tLink{RightOnly, -1, tIndex}, i, j - 1
+			} else {	// aIsOK && cost != 0
+				link, iNext, jNext = tLink{Different, sIndex, tIndex}, i - 1, j - 1
+			}
+		}
+
+		alignment.links = append(alignment.links, link)
+
+		i, j = iNext, jNext
+	}
+
+	// The links are supposed to be in ascending order, but we've extracted them
+	// in descending order, so now we need to reverse them.
+	for low, high := 0, len(alignment.links) - 1; low < high; low, high = low + 1, high - 1 {
+		alignment.links[low], alignment.links[high] = alignment.links[high], alignment.links[low]
+	}
+
+	return matrix[offset(m, n)], alignment
+}
+
+// -------------------------------------------
+
+func min_float32_3(a, b, c float32) float32 {
+	min := a
+	if b < min {
+		min = b
+	}
+	if c < min {
+		min = c
+	}
+	return min
 }
 
