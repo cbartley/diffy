@@ -410,7 +410,7 @@ func LevenshteinDistance_v5(s, t string) int {
 	distance, alignment := Diff_v1(s, t)
 
 	// --- display the alignment ---
-	alignment.dump(ComparableString(s), ComparableString(t), distance, SimpleStdoutLogger)
+	alignment.Dump(ComparableString(s), ComparableString(t), distance, SimpleStdoutLogger)
 
 	return distance
 }
@@ -419,7 +419,9 @@ func LevenshteinDistance_v5(s, t string) int {
 // -------------------------------------------
 // -------------------------------------------
 
-func Diff_v1(s, t string) (distance int, alignment tAlignment) {
+func Diff_v1(s, t string) (distance int, alignment *Alignment) {
+
+	alignment = new(Alignment)
 
 	// --- compute the edit distance matrix
 
@@ -461,7 +463,7 @@ func Diff_v1(s, t string) (distance int, alignment tAlignment) {
 
 		var iNext, jNext int
 
-		var link tLink
+		var link Link
 
 		// We'll use "sIndex" and "tIndex" when referring to the "s" and "t" sequences,
 		// and "i" and "j" when referring to coordinates into the computation matrix.
@@ -470,9 +472,9 @@ func Diff_v1(s, t string) (distance int, alignment tAlignment) {
 		tIndex := j - 1
 
 		if i < 1 {
-			link, iNext, jNext = tLink{RightOnly, -1, tIndex}, 0, j - 1
+			link, iNext, jNext = Link{RightOnly, -1, tIndex}, 0, j - 1
 		} else if j < 1 {
-			link, iNext, jNext = tLink{LeftOnly, sIndex, -1}, i - 1, 0
+			link, iNext, jNext = Link{LeftOnly, sIndex, -1}, i - 1, 0
 		} else {
 
 			var cost int
@@ -488,25 +490,25 @@ func Diff_v1(s, t string) (distance int, alignment tAlignment) {
 			cIsOK := c <= a && c <= b
 
 			if aIsOK && cost == 0 {
-				link, iNext, jNext = tLink{Matching, sIndex, tIndex}, i - 1, j - 1
+				link, iNext, jNext = Link{Matching, sIndex, tIndex}, i - 1, j - 1
 			} else if bIsOK {
-				link, iNext, jNext = tLink{LeftOnly, sIndex, -1}, i - 1, j
+				link, iNext, jNext = Link{LeftOnly, sIndex, -1}, i - 1, j
 			} else if cIsOK {
-				link, iNext, jNext = tLink{RightOnly, -1, tIndex}, i, j - 1
+				link, iNext, jNext = Link{RightOnly, -1, tIndex}, i, j - 1
 			} else {	// aIsOK && cost != 0
-				link, iNext, jNext = tLink{Different, sIndex, tIndex}, i - 1, j - 1
+				link, iNext, jNext = Link{Different, sIndex, tIndex}, i - 1, j - 1
 			}
 		}
 
-		alignment.links = append(alignment.links, link)
+		alignment.Links = append(alignment.Links, link)
 
 		i, j = iNext, jNext
 	}
 
 	// The links are supposed to be in ascending order, but we've extracted them
 	// in descending order, so now we need to reverse them.
-	for low, high := 0, len(alignment.links) - 1; low < high; low, high = low + 1, high - 1 {
-		alignment.links[low], alignment.links[high] = alignment.links[high], alignment.links[low]
+	for low, high := 0, len(alignment.Links) - 1; low < high; low, high = low + 1, high - 1 {
+		alignment.Links[low], alignment.Links[high] = alignment.Links[high], alignment.Links[low]
 	}
 
 	return matrix[offset(m, n)], alignment
@@ -530,7 +532,9 @@ func LevenshteinDistance_v6(s, t string) int {
 // -------------------------------------------
 // -------------------------------------------
 
-func Diff_v2(s, t ComparableSequence) (distance float32, alignment tAlignment) {
+func Diff_v2(s, t ComparableSequence) (distance float32, alignment *Alignment) {
+
+	alignment = new(Alignment)
 
 	// --- compute the edit distance matrix
 
@@ -567,7 +571,7 @@ func Diff_v2(s, t ComparableSequence) (distance float32, alignment tAlignment) {
 
 		var iNext, jNext int
 
-		var link tLink
+		var link Link
 
 		// We'll use "sIndex" and "tIndex" when referring to the "s" and "t" sequences,
 		// and "i" and "j" when referring to coordinates into the computation matrix.
@@ -576,9 +580,9 @@ func Diff_v2(s, t ComparableSequence) (distance float32, alignment tAlignment) {
 		tIndex := j - 1
 
 		if i < 1 {
-			link, iNext, jNext = tLink{RightOnly, -1, tIndex}, 0, j - 1
+			link, iNext, jNext = Link{RightOnly, -1, tIndex}, 0, j - 1
 		} else if j < 1 {
-			link, iNext, jNext = tLink{LeftOnly, sIndex, -1}, i - 1, 0
+			link, iNext, jNext = Link{LeftOnly, sIndex, -1}, i - 1, 0
 		} else {
 
 			cost := s.GetItemAt(i - 1).Compare(t.GetItemAt(j - 1))
@@ -593,25 +597,25 @@ func Diff_v2(s, t ComparableSequence) (distance float32, alignment tAlignment) {
 			cIsOK := c <= a && c <= b
 
 			if aIsOK && cost == 0.0 {
-				link, iNext, jNext = tLink{Matching, sIndex, tIndex}, i - 1, j - 1
+				link, iNext, jNext = Link{Matching, sIndex, tIndex}, i - 1, j - 1
 			} else if bIsOK {
-				link, iNext, jNext = tLink{LeftOnly, sIndex, -1}, i - 1, j
+				link, iNext, jNext = Link{LeftOnly, sIndex, -1}, i - 1, j
 			} else if cIsOK {
-				link, iNext, jNext = tLink{RightOnly, -1, tIndex}, i, j - 1
+				link, iNext, jNext = Link{RightOnly, -1, tIndex}, i, j - 1
 			} else {	// aIsOK && cost != 0
-				link, iNext, jNext = tLink{Different, sIndex, tIndex}, i - 1, j - 1
+				link, iNext, jNext = Link{Different, sIndex, tIndex}, i - 1, j - 1
 			}
 		}
 
-		alignment.links = append(alignment.links, link)
+		alignment.Links = append(alignment.Links, link)
 
 		i, j = iNext, jNext
 	}
 
 	// The links are supposed to be in ascending order, but we've extracted them
 	// in descending order, so now we need to reverse them.
-	for low, high := 0, len(alignment.links) - 1; low < high; low, high = low + 1, high - 1 {
-		alignment.links[low], alignment.links[high] = alignment.links[high], alignment.links[low]
+	for low, high := 0, len(alignment.Links) - 1; low < high; low, high = low + 1, high - 1 {
+		alignment.Links[low], alignment.Links[high] = alignment.Links[high], alignment.Links[low]
 	}
 
 	return matrix[offset(m, n)], alignment

@@ -1,6 +1,9 @@
 package diff
 
-import "fmt"
+import (
+	"fmt"
+	"os"
+)
 
 // -------------------------------------------
 // ------------------------------------------- type SimpleLogger
@@ -36,4 +39,20 @@ func (s tSimpleStdoutLogger) Printf(format string, a ...interface{}) {
 
 func (s tSimpleStdoutLogger) Println(a ...interface{}) {
 	fmt.Println(a...)
+}
+
+// -------------------------------------------
+// ------------------------------------------- SimpleStderrLogger global
+// -------------------------------------------
+
+type tSimpleStderrLogger struct {}
+
+var SimpleStderrLogger tSimpleStderrLogger
+
+func (s tSimpleStderrLogger) Printf(format string, a ...interface{}) {
+	fmt.Fprintf(os.Stderr, format, a...)
+}
+
+func (s tSimpleStderrLogger) Println(a ...interface{}) {
+	fmt.Fprintln(os.Stderr, a...)
 }

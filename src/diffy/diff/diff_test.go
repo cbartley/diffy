@@ -153,11 +153,11 @@ func TestLevenshteinDistance(t *testing.T) {
 	tester.PrintBanner("generating test cases")
 	testCase := generateMasterTestCases(initialStrings, charSet, MAX_OP_COUNT)
 
-	// runTests(NewTester(t, "LevenshteinDistance_v1", LevenshteinDistance_v1), testCase)
-	// runTests(NewTester(t, "LevenshteinDistance_v2", LevenshteinDistance_v2), testCase)
-	// runTests(NewTester(t, "LevenshteinDistance_v3", LevenshteinDistance_v3), testCase)
-	// runTests(NewTester(t, "LevenshteinDistance_v4", LevenshteinDistance_v4), testCase)
-	// runTests(NewTester(t, "LevenshteinDistance_v5", LevenshteinDistance_v5), testCase)
+	runTests(NewTester(t, "LevenshteinDistance_v1", LevenshteinDistance_v1), testCase)
+	runTests(NewTester(t, "LevenshteinDistance_v2", LevenshteinDistance_v2), testCase)
+	runTests(NewTester(t, "LevenshteinDistance_v3", LevenshteinDistance_v3), testCase)
+	runTests(NewTester(t, "LevenshteinDistance_v4", LevenshteinDistance_v4), testCase)
+	runTests(NewTester(t, "LevenshteinDistance_v5", LevenshteinDistance_v5), testCase)
 	runTests(NewTester(t, "LevenshteinDistance_v6", LevenshteinDistance_v6), testCase)
 
 	// Single ad hoc test for now...
@@ -199,7 +199,7 @@ func TestDiff(t *testing.T) {
 
 	tester.PrintBanner("Diff_v2")
 	distance, alignment := Diff_v2(lines1, lines2)
-	alignment.dump(lines1, lines2, int(distance), tester)
+	alignment.Dump(lines1, lines2, int(distance), tester)
 }
 
 // -------------------------------------------
@@ -640,6 +640,6 @@ func NewDiffTestCase(leftLines, rightLines ComparableSequence) *DiffTestCase {
 
 func (self *DiffTestCase) execute(tester *tTester) {
 	distance, alignment := Diff_v2(self.leftLines, self.rightLines)
-	alignment.dump(self.leftLines, self.rightLines, int(distance), tester)
+	alignment.Dump(self.leftLines, self.rightLines, int(distance), tester)
 	// TODO: Short of a panic, the test will never actually fail!
 }

@@ -166,14 +166,14 @@ func (slice uint32_slice_sortAdaptor) Less(i, j int) bool { return slice[i] < sl
 // similarity computations can be made between two TextLines.
 
 type TextLine struct {
-	text string
+	Text string
 	diffHash DiffHash
 }
 
 // ------------------------------------------- NewTextLine TextLine factory function
 
 func NewTextLine(text string) *TextLine {
-	line := TextLine{text:text}
+	line := TextLine{Text:text}
 	line.diffHash.Init(text)
 	return &line
 }
@@ -181,7 +181,9 @@ func NewTextLine(text string) *TextLine {
 // ------------------------------------------- TextLine Similarity method
 
 func (line1 *TextLine) Similarity(line2 *TextLine) float32 {
-	return line1.diffHash.Similarity(line2.diffHash)
+	similarityFactor := line1.diffHash.Similarity(line2.diffHash)
+	if similarityFactor < 0.6 { similarityFactor = 0.0 }
+	return similarityFactor
 }
 
 // ------------------------------------------- TextLine Compare method
@@ -193,7 +195,7 @@ func (line1 *TextLine) Compare(line2 Comparable) float32 {
 // ------------------------------------------- TextLine Stringify method
 
 func (line *TextLine) Stringify(maxWidth int) string {
-	runes := []rune(line.text)
+	runes := []rune(line.Text)
 	if len(runes) > maxWidth {
 		runes = runes[:maxWidth]
 	}
