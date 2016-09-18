@@ -480,23 +480,27 @@ func Diff_v1(s, t string) (distance int, alignment *Alignment) {
 			var cost int
 			if s[i - 1] == t[j - 1] { cost = 0 } else { cost = 1 }
 
-			a := matrix[offset(i - 1, j - 1)] - cost
-			b := matrix[offset(i - 1, j)]
-			c := matrix[offset(i, j - 1)]
+			a := matrix[offset(i - 1, j - 1)] + cost
+			b := matrix[offset(i - 1, j)] + 1
+			c := matrix[offset(i, j - 1)] + 1
 
 			// Another readability improvement: Use boolean temporaries rather than inlining the expressions.  
 			aIsOK := a <= b && a <= c
 			bIsOK := b <= a && b <= c
 			cIsOK := c <= a && c <= b
 
-			if aIsOK && cost == 0 {
-				link, iNext, jNext = Link{Matching, sIndex, tIndex}, i - 1, j - 1
+			if aIsOK {
+				if cost == 0.0 {
+					link, iNext, jNext = Link{Matching, sIndex, tIndex}, i - 1, j - 1
+				} else {
+					link, iNext, jNext = Link{Different, sIndex, tIndex}, i - 1, j - 1
+				}
 			} else if bIsOK {
 				link, iNext, jNext = Link{LeftOnly, sIndex, -1}, i - 1, j
 			} else if cIsOK {
 				link, iNext, jNext = Link{RightOnly, -1, tIndex}, i, j - 1
-			} else {	// aIsOK && cost != 0
-				link, iNext, jNext = Link{Different, sIndex, tIndex}, i - 1, j - 1
+			} else {
+				panic("not reached")
 			}
 		}
 
@@ -587,23 +591,27 @@ func Diff_v2(s, t ComparableSequence) (distance float32, alignment *Alignment) {
 
 			cost := s.GetItemAt(i - 1).Compare(t.GetItemAt(j - 1))
 
-			a := matrix[offset(i - 1, j - 1)] - cost
-			b := matrix[offset(i - 1, j)]
-			c := matrix[offset(i, j - 1)]
+			a := matrix[offset(i - 1, j - 1)] + cost
+			b := matrix[offset(i - 1, j)] + 1
+			c := matrix[offset(i, j - 1)] + 1
 
 			// Another readability improvement: Use boolean temporaries rather than inlining the expressions.  
 			aIsOK := a <= b && a <= c
 			bIsOK := b <= a && b <= c
 			cIsOK := c <= a && c <= b
 
-			if aIsOK && cost == 0.0 {
-				link, iNext, jNext = Link{Matching, sIndex, tIndex}, i - 1, j - 1
+			if aIsOK {
+				if cost == 0.0 {
+					link, iNext, jNext = Link{Matching, sIndex, tIndex}, i - 1, j - 1
+				} else {
+					link, iNext, jNext = Link{Different, sIndex, tIndex}, i - 1, j - 1
+				}
 			} else if bIsOK {
 				link, iNext, jNext = Link{LeftOnly, sIndex, -1}, i - 1, j
 			} else if cIsOK {
 				link, iNext, jNext = Link{RightOnly, -1, tIndex}, i, j - 1
-			} else {	// aIsOK && cost != 0
-				link, iNext, jNext = Link{Different, sIndex, tIndex}, i - 1, j - 1
+			} else {
+				panic("not reached")
 			}
 		}
 
