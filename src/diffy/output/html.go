@@ -3,11 +3,35 @@ package output
 import (
 	"fmt"
 	"html"
+	"path/filepath"
 	"strconv"
 	"strings"
 
 	"diffy/diff"
 )
+
+// ------------------------------------------- type SourceLinesRec
+
+type SourceLinesRec struct {
+	Lines diff.ComparableLines
+	FilePath string
+}
+
+func NewSourceLinesRec(lines diff.ComparableLines, filePath string) *SourceLinesRec {
+	return &SourceLinesRec{Lines: lines, FilePath: filePath}
+}
+
+func (source *SourceLinesRec) GetFileName() string {
+	return filepath.Base(source.FilePath)
+}
+
+func (source *SourceLinesRec) GetAbsoluteFilePath() string {
+	absolutePath, err := filepath.Abs(source.FilePath)
+	if err != nil {
+		return source.FilePath
+	}
+	return absolutePath
+}
 
 // ------------------------------------------- type CssStyle
 //
@@ -47,7 +71,42 @@ func (style CssStyle) when(cond bool) CssStyle {
 
 // ------------------------------------------- CSS style definitions
 
+// ........................................... null style
+
 var nullStyle CssStyle = MakeCssStyle("null")
+
+// ........................................... title headings table and friends
+
+var titleHeadingsTableStyle CssStyle = MakeCssStyle("title-headings-table",
+	"width: 100%",
+	"margin-bottom: 0px",
+	"border-left: solid #696969 2px",
+	"border-right: solid #696969 2px",
+	"border-collapse: collapse",
+	"border-spacing: 0px",
+	"table-layout: fixed",
+	"color: white",
+	"font-family: monospace",
+)
+
+var titleHeadingBoxStyle CssStyle = MakeCssStyle("title-heading-box",
+	"border: solid black 1px",
+	"background-color: #4682B4",
+)
+
+var headingTitleStyle CssStyle = MakeCssStyle("heading-title",
+	"padding: 5px",
+	"font-size: 20pt",
+	"font-weight: bold",
+)
+
+var headingSubtitleStyle CssStyle = MakeCssStyle("heading-subtitle",
+	"padding: 5px",
+	"font-size: 12pt",
+	"font-style: italic",
+)
+
+// ........................................... two line diff table and friends
 
 var twoLineDiffStyle CssStyle = MakeCssStyle("two-line-diff",
 	"width: 100%",
@@ -89,6 +148,7 @@ var codeLineNoneStyle CssStyle = MakeCssStyle("code-line-none",
 )
 
 var twoLineDiffGutterStyle CssStyle = MakeCssStyle("two-line-diff-gutter",
+	"height: 3px",
 	"width: 1px",
 	"border-left: solid black 2px",
 	"border-right: solid black 2px",
@@ -100,9 +160,10 @@ var codeRunDifferentStyle CssStyle = MakeCssStyle("code-run-different",
 
 // ------------------------------------------- GenerateHtmlDiffPage
 //
-func GenerateHtmlDiffPage(alignment *diff.Alignment, left, right diff.ComparableSequence) {
+func GenerateHtmlDiffPage(alignment *diff.Alignment, leftSource, rightSource *SourceLinesRec) {
 
-	alignment = alignment.RealignUsingThreshold(left, right, 0.4)
+	// Re-jigger the alignment to make it more suitable for display.
+	alignment = alignment.RealignUsingThreshold(leftSource.Lines, rightSource.Lines, 0.4)
 
 	// Print the page prologue.
 	fmt.Println("<!DOCTYPE html>")
@@ -114,6 +175,36 @@ func GenerateHtmlDiffPage(alignment *diff.Alignment, left, right diff.Comparable
 	fmt.Println("	</head>")
 	fmt.Println("	<body>")
 
+	// Print the heading.
+	fmt.Println("")
+
+	fmt.Printf("		%s\n", generateStartTag("table", titleHeadingsTableStyle))
+	fmt.Printf("			%s\n", generateStartTag("tr"))
+	fmt.Printf("				%s\n", generateStartTag("td", titleHeadingBoxStyle))
+	fmt.Printf("					%s\n", generateElement("div", leftSource.GetFileName(), headingTitleStyle))
+	fmt.Printf("					%s\n", generateElement("div", leftSource.GetAbsoluteFilePath(), headingSubtitleStyle))
+	fmt.Printf("				%s\n", generateEndTag("td"))
+	fmt.Printf("				%s\n", generateElement("td", "", twoLineDiffGutterStyle))
+	fmt.Printf("				%s\n", generateStartTag("td", titleHeadingBoxStyle))
+	fmt.Printf("					%s\n", generateElement("div", rightSource.GetFileName(), headingTitleStyle))
+	fmt.Printf("					%s\n", generateElement("div", rightSource.GetAbsoluteFilePath(), headingSubtitleStyle))
+	fmt.Printf("				%s\n", generateEndTag("td"))
+	fmt.Printf("			%s\n", generateEndTag("tr"))
+	fmt.Printf("		%s\n", generateEndTag("table"))
+	fmt.Println("")
+
+	// Generate an empty initial "code-line" table to provide some extra spacing.
+	fmt.Printf("		%s\n", generateStartTag("table", twoLineDiffStyle))
+	fmt.Printf("			%s\n", generateStartTag("tr"))
+	fmt.Printf("				%s\n", generateElement("td", "", lineNumStyle))
+	fmt.Printf("				%s\n", generateElement("td", "", codeLineStyle))
+	fmt.Printf("				%s\n", generateElement("td", "", twoLineDiffGutterStyle))
+	fmt.Printf("				%s\n", generateElement("td", "", codeLineStyle))
+	fmt.Printf("				%s\n", generateElement("td", "", lineNumStyle))
+	fmt.Printf("			%s\n", generateEndTag("tr"))
+	fmt.Printf("		%s\n", generateEndTag("table"))
+	fmt.Println("")
+
 	// For each link in the alignment generate a side-by-side diff of the corresponding
 	// pair of lines.  We will just use blank lines when one line is missing.
 	for _, link := range alignment.Links {
@@ -122,11 +213,11 @@ func GenerateHtmlDiffPage(alignment *diff.Alignment, left, right diff.Comparable
 		var leftItem, rightItem diff.Comparable = nil, nil
 		switch link.LinkType {
 		case diff.Matching, diff.Different:
-			leftItem, rightItem = left.GetItemAt(link.LeftIndex), right.GetItemAt(link.RightIndex)
+			leftItem, rightItem = leftSource.Lines[link.LeftIndex], rightSource.Lines[link.RightIndex]
 		case diff.LeftOnly:
-			leftItem = left.GetItemAt(link.LeftIndex)
+			leftItem = leftSource.Lines[link.LeftIndex]
 		case diff.RightOnly:
-			rightItem = right.GetItemAt(link.RightIndex)
+			rightItem = rightSource.Lines[link.RightIndex]
 		default:
 			panic("not reached")
 		}
@@ -178,6 +269,19 @@ func GenerateHtmlDiffPage(alignment *diff.Alignment, left, right diff.Comparable
 		fmt.Printf("			%s\n", generateEndTag("tr"))
 		fmt.Printf("		%s\n", generateEndTag("table"))
 	}
+	fmt.Println("")
+
+	// Generate an empty final "code-line" table to provide some extra spacing.
+	fmt.Printf("		%s\n", generateStartTag("table", twoLineDiffStyle))
+	fmt.Printf("			%s\n", generateStartTag("tr"))
+	fmt.Printf("				%s\n", generateElement("td", "", lineNumStyle))
+	fmt.Printf("				%s\n", generateElement("td", "", codeLineStyle))
+	fmt.Printf("				%s\n", generateElement("td", "", twoLineDiffGutterStyle))
+	fmt.Printf("				%s\n", generateElement("td", "", codeLineStyle))
+	fmt.Printf("				%s\n", generateElement("td", "", lineNumStyle))
+	fmt.Printf("			%s\n", generateEndTag("tr"))
+	fmt.Printf("		%s\n", generateEndTag("table"))
+	fmt.Println("")
 
 	// Print the page epilogue.
 	fmt.Println("	</body>")

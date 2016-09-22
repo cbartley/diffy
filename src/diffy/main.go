@@ -48,7 +48,10 @@ func main() {
 
 	_, alignment := diff.Diff_v2(lines1, lines2)
 	// alignment.Dump(lines1, lines2, 0, diff.SimpleStderrLogger)
-	output.GenerateHtmlDiffPage(alignment, lines1, lines2)
+
+	sourceLines1 := output.NewSourceLinesRec(lines1, pathToFile1)
+	sourceLines2 := output.NewSourceLinesRec(lines2, pathToFile2)
+	output.GenerateHtmlDiffPage(alignment, sourceLines1, sourceLines2)
 }
 
 // ------------------------------------------- checkThatPathExists
