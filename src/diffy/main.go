@@ -2,21 +2,32 @@ package main
 
 import (
 	"bufio"
+	"flag"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
+	"os/exec"
 	"path/filepath"
 
 	"diffy/diff"
+	"diffy/etc"
 	"diffy/output"
 )
+
+// ------------------------------------------- flags
+
+var openWithPtr = flag.String("open-with", "", "open with")
 
 // ------------------------------------------- main
 
 func main() {
 
+	// We must parse the flags before we do anything else.
+	flag.Parse()
+
 	// Do we have the right number of arguments?
-	if len(os.Args) != 3 {
+	if len(flag.Args()) != 2 {
 		fmt.Fprintf(os.Stderr, "Usage: %s FILE1 FILE2\n", filepath.Base(os.Args[0]))
 		fmt.Fprintln(os.Stderr)
 		fmt.Fprintln(os.Stderr, "Exit 1.")
@@ -24,7 +35,7 @@ func main() {
 	}
 
 	// Extract our arguments.
-	pathToFile1, pathToFile2 := os.Args[1], os.Args[2]
+	pathToFile1, pathToFile2 := flag.Arg(0), flag.Arg(1)
 
 	// Do the specified files exist?
 	if !checkThatPathExists(pathToFile1) || !checkThatPathExists(pathToFile2) {
@@ -51,7 +62,46 @@ func main() {
 
 	sourceLines1 := output.NewSourceLinesRec(lines1, pathToFile1)
 	sourceLines2 := output.NewSourceLinesRec(lines2, pathToFile2)
-	output.GenerateHtmlDiffPage(alignment, sourceLines1, sourceLines2)
+
+	// We will output to stdout or a temporary file, depending.
+	outputFile := os.Stdout
+	if *openWithPtr != "" {
+		outputFile, err = ioutil.TempFile("", "diffy")
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Could not open the temporary file; error = %v\n", err)
+			exitWithNotification(4)
+		}
+		defer outputFile.Close()
+	}
+
+	output.GenerateHtmlDiffPage(outputFile, alignment, sourceLines1, sourceLines2)
+
+	// If we are doing "--open-with" then we need to invoke the open command on the temp file.
+	if *openWithPtr != "" {
+		err := executeCommand(*openWithPtr, outputFile.Name())
+		if err != nil {
+			fmt.Fprintf(os.Stderr, 
+						"Tried to execute the %q command %q, but got an error.\n", 
+						"--open-with", *openWithPtr)
+			fmt.Fprintf(os.Stderr, "The error was %v", err)
+			exitWithNotification(4)
+		}
+	}
+}
+
+// ------------------------------------------- executeCommand
+
+func executeCommand(cmdText string, extraArgs ...string) error {
+
+	// Figure out the executable name and assemble the arguments.
+	cmdWords := etc.ParseWords(cmdText)
+	cmdName := cmdWords[0]
+	cmdArgs := cmdWords[1:]
+	cmdArgs = append(cmdArgs, extraArgs...)
+
+	// Create the command and run it.
+	command := exec.Command(cmdName, cmdArgs...)
+	return command.Run();
 }
 
 // ------------------------------------------- checkThatPathExists

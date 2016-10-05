@@ -3,6 +3,7 @@ package output
 import (
 	"fmt"
 	"html"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -160,50 +161,50 @@ var codeRunDifferentStyle CssStyle = MakeCssStyle("code-run-different",
 
 // ------------------------------------------- GenerateHtmlDiffPage
 //
-func GenerateHtmlDiffPage(alignment *diff.Alignment, leftSource, rightSource *SourceLinesRec) {
+func GenerateHtmlDiffPage(outputFile *os.File, alignment *diff.Alignment, leftSource, rightSource *SourceLinesRec) {
 
 	// Re-jigger the alignment to make it more suitable for display.
 	alignment = alignment.RealignUsingThreshold(leftSource.Lines, rightSource.Lines, 0.4)
 
 	// Print the page prologue.
-	fmt.Println("<!DOCTYPE html>")
-	fmt.Println("<html>")
-	fmt.Println("	<head>")
-	fmt.Println("		<title>Diff</title>")
-	fmt.Println("")
-	fmt.Println("		<meta charset=\"utf-8\"/>")
-	fmt.Println("	</head>")
-	fmt.Println("	<body>")
+	fmt.Fprintln(outputFile, "<!DOCTYPE html>")
+	fmt.Fprintln(outputFile, "<html>")
+	fmt.Fprintln(outputFile, "	<head>")
+	fmt.Fprintln(outputFile, "		<title>Diff</title>")
+	fmt.Fprintln(outputFile, "")
+	fmt.Fprintln(outputFile, "		<meta charset=\"utf-8\"/>")
+	fmt.Fprintln(outputFile, "	</head>")
+	fmt.Fprintln(outputFile, "	<body>")
 
 	// Print the heading.
-	fmt.Println("")
+	fmt.Fprintln(outputFile, "")
 
-	fmt.Printf("		%s\n", generateStartTag("table", titleHeadingsTableStyle))
-	fmt.Printf("			%s\n", generateStartTag("tr"))
-	fmt.Printf("				%s\n", generateStartTag("td", titleHeadingBoxStyle))
-	fmt.Printf("					%s\n", generateElement("div", leftSource.GetFileName(), headingTitleStyle))
-	fmt.Printf("					%s\n", generateElement("div", leftSource.GetAbsoluteFilePath(), headingSubtitleStyle))
-	fmt.Printf("				%s\n", generateEndTag("td"))
-	fmt.Printf("				%s\n", generateElement("td", "", twoLineDiffGutterStyle))
-	fmt.Printf("				%s\n", generateStartTag("td", titleHeadingBoxStyle))
-	fmt.Printf("					%s\n", generateElement("div", rightSource.GetFileName(), headingTitleStyle))
-	fmt.Printf("					%s\n", generateElement("div", rightSource.GetAbsoluteFilePath(), headingSubtitleStyle))
-	fmt.Printf("				%s\n", generateEndTag("td"))
-	fmt.Printf("			%s\n", generateEndTag("tr"))
-	fmt.Printf("		%s\n", generateEndTag("table"))
-	fmt.Println("")
+	fmt.Fprintf(outputFile, "		%s\n", generateStartTag("table", titleHeadingsTableStyle))
+	fmt.Fprintf(outputFile, "			%s\n", generateStartTag("tr"))
+	fmt.Fprintf(outputFile, "				%s\n", generateStartTag("td", titleHeadingBoxStyle))
+	fmt.Fprintf(outputFile, "					%s\n", generateElement("div", leftSource.GetFileName(), headingTitleStyle))
+	fmt.Fprintf(outputFile, "					%s\n", generateElement("div", leftSource.GetAbsoluteFilePath(), headingSubtitleStyle))
+	fmt.Fprintf(outputFile, "				%s\n", generateEndTag("td"))
+	fmt.Fprintf(outputFile, "				%s\n", generateElement("td", "", twoLineDiffGutterStyle))
+	fmt.Fprintf(outputFile, "				%s\n", generateStartTag("td", titleHeadingBoxStyle))
+	fmt.Fprintf(outputFile, "					%s\n", generateElement("div", rightSource.GetFileName(), headingTitleStyle))
+	fmt.Fprintf(outputFile, "					%s\n", generateElement("div", rightSource.GetAbsoluteFilePath(), headingSubtitleStyle))
+	fmt.Fprintf(outputFile, "				%s\n", generateEndTag("td"))
+	fmt.Fprintf(outputFile, "			%s\n", generateEndTag("tr"))
+	fmt.Fprintf(outputFile, "		%s\n", generateEndTag("table"))
+	fmt.Fprintln(outputFile, "")
 
 	// Generate an empty initial "code-line" table to provide some extra spacing.
-	fmt.Printf("		%s\n", generateStartTag("table", twoLineDiffStyle))
-	fmt.Printf("			%s\n", generateStartTag("tr"))
-	fmt.Printf("				%s\n", generateElement("td", "", lineNumStyle))
-	fmt.Printf("				%s\n", generateElement("td", "", codeLineStyle))
-	fmt.Printf("				%s\n", generateElement("td", "", twoLineDiffGutterStyle))
-	fmt.Printf("				%s\n", generateElement("td", "", codeLineStyle))
-	fmt.Printf("				%s\n", generateElement("td", "", lineNumStyle))
-	fmt.Printf("			%s\n", generateEndTag("tr"))
-	fmt.Printf("		%s\n", generateEndTag("table"))
-	fmt.Println("")
+	fmt.Fprintf(outputFile, "		%s\n", generateStartTag("table", twoLineDiffStyle))
+	fmt.Fprintf(outputFile, "			%s\n", generateStartTag("tr"))
+	fmt.Fprintf(outputFile, "				%s\n", generateElement("td", "", lineNumStyle))
+	fmt.Fprintf(outputFile, "				%s\n", generateElement("td", "", codeLineStyle))
+	fmt.Fprintf(outputFile, "				%s\n", generateElement("td", "", twoLineDiffGutterStyle))
+	fmt.Fprintf(outputFile, "				%s\n", generateElement("td", "", codeLineStyle))
+	fmt.Fprintf(outputFile, "				%s\n", generateElement("td", "", lineNumStyle))
+	fmt.Fprintf(outputFile, "			%s\n", generateEndTag("tr"))
+	fmt.Fprintf(outputFile, "		%s\n", generateEndTag("table"))
+	fmt.Fprintln(outputFile, "")
 
 	// For each link in the alignment generate a side-by-side diff of the corresponding
 	// pair of lines.  We will just use blank lines when one line is missing.
@@ -259,33 +260,33 @@ func GenerateHtmlDiffPage(alignment *diff.Alignment, leftSource, rightSource *So
 		}
 
 		// Output the HTML for these two lines.
-		fmt.Printf("		%s\n", generateStartTag("table", twoLineDiffStyle))
-		fmt.Printf("			%s\n", generateStartTag("tr"))
-		fmt.Printf("				%s\n", generateElement("td", leftLineNumHtml, lineNumStyle))
-		fmt.Printf("				%s\n", generateElement("td", leftHtml, leftLineStyle...))
-		fmt.Printf("				%s\n", generateElement("td", "", twoLineDiffGutterStyle))
-		fmt.Printf("				%s\n", generateElement("td", rightHtml, rightLineStyle...))
-		fmt.Printf("				%s\n", generateElement("td", rightLineNumHtml, lineNumStyle))
-		fmt.Printf("			%s\n", generateEndTag("tr"))
-		fmt.Printf("		%s\n", generateEndTag("table"))
+		fmt.Fprintf(outputFile, "		%s\n", generateStartTag("table", twoLineDiffStyle))
+		fmt.Fprintf(outputFile, "			%s\n", generateStartTag("tr"))
+		fmt.Fprintf(outputFile, "				%s\n", generateElement("td", leftLineNumHtml, lineNumStyle))
+		fmt.Fprintf(outputFile, "				%s\n", generateElement("td", leftHtml, leftLineStyle...))
+		fmt.Fprintf(outputFile, "				%s\n", generateElement("td", "", twoLineDiffGutterStyle))
+		fmt.Fprintf(outputFile, "				%s\n", generateElement("td", rightHtml, rightLineStyle...))
+		fmt.Fprintf(outputFile, "				%s\n", generateElement("td", rightLineNumHtml, lineNumStyle))
+		fmt.Fprintf(outputFile, "			%s\n", generateEndTag("tr"))
+		fmt.Fprintf(outputFile, "		%s\n", generateEndTag("table"))
 	}
-	fmt.Println("")
+	fmt.Fprintln(outputFile, "")
 
 	// Generate an empty final "code-line" table to provide some extra spacing.
-	fmt.Printf("		%s\n", generateStartTag("table", twoLineDiffStyle))
-	fmt.Printf("			%s\n", generateStartTag("tr"))
-	fmt.Printf("				%s\n", generateElement("td", "", lineNumStyle))
-	fmt.Printf("				%s\n", generateElement("td", "", codeLineStyle))
-	fmt.Printf("				%s\n", generateElement("td", "", twoLineDiffGutterStyle))
-	fmt.Printf("				%s\n", generateElement("td", "", codeLineStyle))
-	fmt.Printf("				%s\n", generateElement("td", "", lineNumStyle))
-	fmt.Printf("			%s\n", generateEndTag("tr"))
-	fmt.Printf("		%s\n", generateEndTag("table"))
-	fmt.Println("")
+	fmt.Fprintf(outputFile, "		%s\n", generateStartTag("table", twoLineDiffStyle))
+	fmt.Fprintf(outputFile, "			%s\n", generateStartTag("tr"))
+	fmt.Fprintf(outputFile, "				%s\n", generateElement("td", "", lineNumStyle))
+	fmt.Fprintf(outputFile, "				%s\n", generateElement("td", "", codeLineStyle))
+	fmt.Fprintf(outputFile, "				%s\n", generateElement("td", "", twoLineDiffGutterStyle))
+	fmt.Fprintf(outputFile, "				%s\n", generateElement("td", "", codeLineStyle))
+	fmt.Fprintf(outputFile, "				%s\n", generateElement("td", "", lineNumStyle))
+	fmt.Fprintf(outputFile, "			%s\n", generateEndTag("tr"))
+	fmt.Fprintf(outputFile, "		%s\n", generateEndTag("table"))
+	fmt.Fprintln(outputFile, "")
 
 	// Print the page epilogue.
-	fmt.Println("	</body>")
-	fmt.Println("</html>")
+	fmt.Fprintln(outputFile, "	</body>")
+	fmt.Fprintln(outputFile, "</html>")
 }
 
 // ------------------------------------------- generateLineHtml
